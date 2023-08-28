@@ -22,7 +22,7 @@ void MessageQueue<T>::send(T &&msg)
 
 /* Implementation of class "TrafficLight" */
 
-/* 
+
 TrafficLight::TrafficLight()
 {
     _currentPhase = TrafficLightPhase::red;
@@ -48,10 +48,35 @@ void TrafficLight::simulate()
 // virtual function which is executed in a thread
 void TrafficLight::cycleThroughPhases()
 {
-    // FP.2a : Implement the function with an infinite loop that measures the time between two loop cycles 
-    // and toggles the current phase of the traffic light between red and green and sends an update method 
-    // to the message queue using move semantics. The cycle duration should be a random value between 4 and 6 seconds. 
-    // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles. 
-}
+    // FP.2a : Implement the function with an infinite loop that measures the time between two loop cycles
+    // and toggles the current phase of the traffic light between red and green and sends an update method
+    // to the message queue using move semantics. The cycle duration should be a random value between 4 and 6 seconds.
+    // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles.
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distrib(4000, 6000);
+    int cycleDuration = distrib(gen);
 
-*/
+    auto prevTime = std::chrono::system_clock::now();
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        auto currentDuration = std::chrono::duration_cast<std::chrono::milliseconds>
+                (std::chrono::system_clock::now() - prevTime);
+
+        if(currentDuration.count() >= cycleDuration){
+            _currentPhase = _currentPhase == red ? green : red;
+
+            auto ftr = std::async(std::launch::async,
+                                         &MessageQueue<TrafficLightPhase>::send,
+                                         &_messages,
+                                         std::move(_currentPhase));
+            ftr.wait();
+
+            prevTime = std::chrono::system_clock::now();
+            cycleDuration = distrib(gen);
+        }
+    }
+}
