@@ -36,6 +36,7 @@ void MessageQueue<T>::send(T &&msg)
 TrafficLight::TrafficLight()
 {
     _currentPhase = TrafficLightPhase::red;
+    _messages = std::make_shared<MessageQueue<TrafficLightPhase>>();
 }
 
 void TrafficLight::waitForGreen()
@@ -62,7 +63,6 @@ void TrafficLight::simulate()
 {
     // FP.2b : Finally, the private method „cycleThroughPhases“ should be started in a thread when the public method „simulate“ is called. To do this, use the thread queue in the base class. 
     threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases, this));
-    _messages = std::make_shared<MessageQueue<TrafficLightPhase>>();
 }
 
 // virtual function which is executed in a thread
