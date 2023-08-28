@@ -15,7 +15,7 @@ T MessageQueue<T>::receive()
     _cond.wait(uLock, [this] { return !_queue.empty(); });
 
     T msg = std::move(_queue.back());
-    _queue.pop_back();
+    _queue.pop_front();
 
     return msg;
 }
@@ -26,7 +26,7 @@ void MessageQueue<T>::send(T &&msg)
     // FP.4a : The method send should use the mechanisms std::lock_guard<std::mutex> 
     // as well as _condition.notify_one() to add a new message to the queue and afterwards send a notification.
     std::lock_guard<std::mutex> uLock(_mutex);
-    _queue.emplace_back(std::move(msg));
+    _queue.push_back(std::move(msg));
     _cond.notify_one();
 }
 
@@ -46,7 +46,7 @@ void TrafficLight::waitForGreen()
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        auto msg = _messages.receive();
+        auto msg = _messages->receive();
         if(msg == green){
             return;
         }
@@ -62,6 +62,7 @@ void TrafficLight::simulate()
 {
     // FP.2b : Finally, the private method „cycleThroughPhases“ should be started in a thread when the public method „simulate“ is called. To do this, use the thread queue in the base class. 
     threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases, this));
+    _messages = std::make_shared<MessageQueue<TrafficLightPhase>>();
 }
 
 // virtual function which is executed in a thread
@@ -90,7 +91,7 @@ void TrafficLight::cycleThroughPhases()
 
             auto ftr = std::async(std::launch::async,
                                          &MessageQueue<TrafficLightPhase>::send,
-                                         &_messages,
+                                         _messages,
                                          std::move(_currentPhase));
             ftr.wait();
 
